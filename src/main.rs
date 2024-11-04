@@ -1,6 +1,5 @@
 use std::process;
 
-use crossterm::event::{self, Event, KeyCode, KeyEventKind};
 use funnytaskmanager2::run;
 
 fn main() {
