@@ -1,7 +1,5 @@
-use core::time;
-
-use chrono::{format::Item, Utc};
-use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
+use chrono::Utc;
+use crossterm::event::{self, Event, KeyCode, KeyEventKind};
 use ratatui::{
     layout::{Constraint, Layout},
     style::{Color, Style, Stylize},
@@ -36,8 +34,8 @@ struct Task {
 pub fn run() {
     let conn = Connection::open("./data.db3").expect("failed to connect to db");
     let mut terminal = ratatui::init();
-    let mut items = fetch_tasks(&conn);
-    
+    let items = fetch_tasks(&conn);
+
     let mut my_state = MyState {
         list_state: ListState::default(),
         items,
@@ -67,7 +65,10 @@ pub fn run() {
                         KeyCode::Down => my_state.list_state.select_next(),
                         KeyCode::Char('i') => my_state.state = Opened::Insert,
                         KeyCode::Backspace => {
-                            del_task(my_state.items[my_state.list_state.selected().unwrap()].id, &conn);
+                            del_task(
+                                my_state.items[my_state.list_state.selected().unwrap()].id,
+                                &conn,
+                            );
                             my_state.items = fetch_tasks(&conn)
                         }
                         _ => continue,
@@ -76,13 +77,12 @@ pub fn run() {
                         KeyCode::Esc => {
                             my_state.state = Opened::View;
                             my_state.input.reset();
-                        },
+                        }
                         KeyCode::Enter => {
                             my_state.state = Opened::View;
                             insert_new_task(my_state.input.value().to_string(), &conn);
                             my_state.items = fetch_tasks(&conn);
                             my_state.input.reset();
-                            
                         }
                         _ => {
                             my_state.input.handle_event(&Event::Key(key));
@@ -93,16 +93,23 @@ pub fn run() {
         }
     }
 }
-fn insert_new_task(content: String, conn: &Connection){
-    conn.execute("Insert INTO task(name, date) VALUES(?1, (SELECT datetime()))", (&content,)).unwrap();
+fn insert_new_task(content: String, conn: &Connection) {
+    conn.execute(
+        "Insert INTO task(name, date) VALUES(?1, (SELECT datetime()))",
+        (&content,),
+    )
+    .unwrap();
 }
 
-fn del_task(id: u64, conn: &Connection){
-    conn.execute("DELETE FROM task WHERE id == ?1", (id,)).unwrap();
+fn del_task(id: u64, conn: &Connection) {
+    conn.execute("DELETE FROM task WHERE id == ?1", (id,))
+        .unwrap();
 }
 
-fn fetch_tasks(conn: &Connection) -> Vec<Task>{
-    let items: Vec<Task> = conn.prepare("Select id, name, date from task").unwrap()
+fn fetch_tasks(conn: &Connection) -> Vec<Task> {
+    let items: Vec<Task> = conn
+        .prepare("Select id, name, date from task")
+        .unwrap()
         .query_map((), |item| {
             Ok(Task {
                 id: item.get(0).unwrap(),
@@ -115,7 +122,6 @@ fn fetch_tasks(conn: &Connection) -> Vec<Task>{
         .collect();
     items
 }
-
 
 pub fn migrations() -> Result<(), String> {
     let conn =
