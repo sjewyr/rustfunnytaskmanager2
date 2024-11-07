@@ -34,7 +34,7 @@ struct Task {
 pub fn run() {
     let conn = Connection::open("./data.db3").expect("failed to connect to db");
     let mut terminal = ratatui::init();
-    let items = fetch_tasks(&conn);
+    let items = fetch_tasks(&conn).inspect_err(|err| eprintln!("{err}")).unwrap_or_default();
 
     let mut my_state = MyState {
         list_state: ListState::default(),
@@ -66,8 +66,8 @@ pub fn run() {
                         KeyCode::Char('i') => my_state.state = Opened::Insert,
                         KeyCode::Backspace => {
                             if let Some(index) = my_state.list_state.selected() {
-                                del_task(my_state.items[index].id, &conn);
-                                my_state.items = fetch_tasks(&conn)
+                                del_task(my_state.items[index].id, &conn).inspect_err(|err| eprintln!("{err}")).ok();
+                                my_state.items = fetch_tasks(&conn).inspect_err(|err| eprintln!("{err}")).unwrap_or_default();
                             }
                         }
                         _ => continue,
@@ -79,8 +79,10 @@ pub fn run() {
                         }
                         KeyCode::Enter => {
                             my_state.state = Opened::View;
-                            insert_new_task(my_state.input.value().to_string(), &conn);
-                            my_state.items = fetch_tasks(&conn);
+                            insert_new_task(my_state.input.value().to_string(), &conn)
+                                .inspect_err(|err| eprintln!("{err}"))
+                                .ok();
+                            my_state.items = fetch_tasks(&conn).inspect_err(|err| eprintln!("{err}")).unwrap_or_default();
                             my_state.input.reset();
                         }
                         _ => {
@@ -92,34 +94,35 @@ pub fn run() {
         }
     }
 }
-fn insert_new_task(content: String, conn: &Connection) {
+fn insert_new_task(content: String, conn: &Connection) -> Result<(), rusqlite::Error> {
     conn.execute(
         "Insert INTO task(name, date) VALUES(?1, (SELECT datetime()))",
         (&content,),
-    )
-    .unwrap();
+    )?;
+    Ok(())
 }
 
-fn del_task(id: u64, conn: &Connection) {
-    conn.execute("DELETE FROM task WHERE id == ?1", (id,))
-        .unwrap();
+fn del_task(id: u64, conn: &Connection) -> Result<(), rusqlite::Error> {
+    conn.execute("DELETE FROM task WHERE id == ?1", (id,))?;
+    Ok(())
 }
 
-fn fetch_tasks(conn: &Connection) -> Vec<Task> {
-    let items: Vec<Task> = conn
-        .prepare("Select id, name, date from task")
-        .unwrap()
+fn fetch_tasks(conn: &Connection) -> Result<Vec<Task>, rusqlite::Error> {
+    let mut items = Vec::new();
+    conn.prepare("Select id, name, date from task")?
         .query_map((), |item| {
             Ok(Task {
-                id: item.get(0).unwrap(),
-                name: item.get(1).unwrap(),
-                date: item.get(2).unwrap(),
+                id: item.get(0)?,
+                name: item.get(1)?,
+                date: item.get(2)?,
             })
-        })
-        .unwrap()
-        .map(|item| item.unwrap())
-        .collect();
-    items
+        })?
+        .try_for_each(|row| -> Result<(), rusqlite::Error> {
+            items.push(row?);
+            Ok(())
+        })?;
+
+    Ok(items)
 }
 
 pub fn migrations() -> Result<(), String> {
