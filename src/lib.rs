@@ -65,11 +65,10 @@ pub fn run() {
                         KeyCode::Down => my_state.list_state.select_next(),
                         KeyCode::Char('i') => my_state.state = Opened::Insert,
                         KeyCode::Backspace => {
-                            del_task(
-                                my_state.items[my_state.list_state.selected().unwrap()].id,
-                                &conn,
-                            );
-                            my_state.items = fetch_tasks(&conn)
+                            if let Some(index) = my_state.list_state.selected() {
+                                del_task(my_state.items[index].id, &conn);
+                                my_state.items = fetch_tasks(&conn)
+                            }
                         }
                         _ => continue,
                     },
@@ -153,7 +152,7 @@ fn draw(frame: &mut Frame, state: &mut MyState) {
         .repeat_highlight_symbol(true);
     let layout = Layout::vertical([Constraint::Min(20), Constraint::Length(20)]);
     let rect = layout.split(frame.area());
-    let text = Text::raw("Q: Quit; UP: select prev; DOWN: select next; I: New");
+    let text = Text::raw("Q: Quit; UP: select prev; DOWN: select next; I: New; BACKSPACE: Delete");
     frame.render_stateful_widget(list, rect[0], &mut state.list_state);
     frame.render_widget(text, rect[1]);
 }
