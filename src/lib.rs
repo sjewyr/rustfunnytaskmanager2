@@ -157,7 +157,7 @@ pub fn migrations() -> Result<(), String> {
 
 fn draw(frame: &mut Frame, state: &mut MyState) {
     let list = List::new(&state.items)
-        .block(Block::bordered().title("List"))
+        .block(Block::bordered().title("Task List"))
         .highlight_style(Style::new().reversed())
         .highlight_symbol(">>")
         .repeat_highlight_symbol(true);
