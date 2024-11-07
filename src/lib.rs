@@ -34,7 +34,9 @@ struct Task {
 pub fn run() {
     let conn = Connection::open("./data.db3").expect("failed to connect to db");
     let mut terminal = ratatui::init();
-    let items = fetch_tasks(&conn).inspect_err(|err| eprintln!("{err}")).unwrap_or_default();
+    let items = fetch_tasks(&conn)
+        .inspect_err(|err| eprintln!("{err}"))
+        .unwrap_or_default();
 
     let mut my_state = MyState {
         list_state: ListState::default(),
@@ -66,8 +68,12 @@ pub fn run() {
                         KeyCode::Char('i') => my_state.state = Opened::Insert,
                         KeyCode::Backspace => {
                             if let Some(index) = my_state.list_state.selected() {
-                                del_task(my_state.items[index].id, &conn).inspect_err(|err| eprintln!("{err}")).ok();
-                                my_state.items = fetch_tasks(&conn).inspect_err(|err| eprintln!("{err}")).unwrap_or_default();
+                                del_task(my_state.items[index].id, &conn)
+                                    .inspect_err(|err| eprintln!("{err}"))
+                                    .ok();
+                                my_state.items = fetch_tasks(&conn)
+                                    .inspect_err(|err| eprintln!("{err}"))
+                                    .unwrap_or_default();
                             }
                         }
                         _ => continue,
@@ -82,7 +88,9 @@ pub fn run() {
                             insert_new_task(my_state.input.value().to_string(), &conn)
                                 .inspect_err(|err| eprintln!("{err}"))
                                 .ok();
-                            my_state.items = fetch_tasks(&conn).inspect_err(|err| eprintln!("{err}")).unwrap_or_default();
+                            my_state.items = fetch_tasks(&conn)
+                                .inspect_err(|err| eprintln!("{err}"))
+                                .unwrap_or_default();
                             my_state.input.reset();
                         }
                         _ => {
